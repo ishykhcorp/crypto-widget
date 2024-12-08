@@ -1,0 +1,45 @@
+{
+  "name": "crypto-widget",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "webpack serve --open",
+    "build": "webpack --node-env=production"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ishykhcorp/crypto-widget.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ishykhcorp/crypto-widget/issues"
+  },
+  "homepage": "https://github.com/ishykhcorp/crypto-widget#readme",
+  "description": "",
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "@babel/preset-react": "^7.26.3",
+    "@babel/preset-typescript": "^7.26.0",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
+    "babel-loader": "^9.2.1",
+    "css-loader": "^7.1.2",
+    "css-minimizer-webpack-plugin": "^7.0.0",
+    "html-webpack-plugin": "^5.6.3",
+    "mini-css-extract-plugin": "^2.9.2",
+    "style-loader": "^4.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2",
+    "typescript-plugin-css-modules": "^5.1.0",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.1.0"
+  }
+}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="root"></div>
+    <script src="bundle.js"></script>
+    <script>
+        window.CryptoWidget.init({
+            containerId: 'root',
+            type: 'compact',
+            cssTokens: {
+                '--bg-color': '#d3d3d3',
+                '--text-color': "#363636"
+            }
+        });
+
+        window.CryptoWidget.init({
+            containerId: 'root1',
+            type: 'compact',
+            cssTokens: {
+                '--bg-color': '#92dedc',
+                '--text-color': "#de7e7c"
+            },
+            shouldCreateContainerIfNotExist: true,
+        });
+
+        window.CryptoWidget.init({
+            containerId: 'root2',
+            type: 'full',
+            shouldCreateContainerIfNotExist: true,
+            cssTokens: {
+                '--bg-color': '#81daca',
+                '--text-color': "#005451"
+            }
+        });
+
+        window.CryptoWidget.init({
+            containerId: 'root3',
+            type: 'full',
+            shouldCreateContainerIfNotExist: true,
+            cssTokens: {
+                '--bg-color': '#ebbe4d',
+                '--text-color': "#453306"
+            }
+        });
+
+        window.CryptoWidget.init({
+            containerId: 'root4',
+            type: 'full',
+            shouldCreateContainerIfNotExist: true,
+            cssTokens: {
+                '--bg-color': '#dea193',
+                '--text-color': "#401f18"
+            }
+        });
+    </script>
+</body>
+</html>
