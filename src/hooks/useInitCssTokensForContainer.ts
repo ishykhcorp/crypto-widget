@@ -1,26 +1,33 @@
-import { useEffect } from "react";
-import type { TCryptoWidgetConfig } from "../types/widget";
-import { allowedCssTokens } from "../constants/cssTokens";
-import { isCssTokenExist } from "../utils/token";
+import { useEffect } from 'react';
 
-type TUseCssTokensForContainer = Pick<TCryptoWidgetConfig, 'cssTokens' | 'containerId'>
+import { allowedCssTokens } from '../constants/cssTokens';
+import type { TCryptoWidgetConfig } from '../types/widget';
+import { isCssTokenExist } from '../utils/token';
 
-export function useInitCssTokensForContainer({containerId, cssTokens}: TUseCssTokensForContainer) {
-    useEffect(() => {
-        const container = document.getElementById(containerId);
+type TUseCssTokensForContainer = Pick<
+  TCryptoWidgetConfig,
+  'cssTokens' | 'containerId'
+>;
 
-        if (container) {
-            allowedCssTokens.forEach(tokenName => {
-                container.style.removeProperty(tokenName);
-            });
+export function useInitCssTokensForContainer({
+  containerId,
+  cssTokens,
+}: TUseCssTokensForContainer) {
+  useEffect(() => {
+    const container = document.getElementById(containerId);
 
-            if (cssTokens && typeof cssTokens === 'object') {
-                Object.entries(cssTokens).filter(
-                    ([tokenName]) => isCssTokenExist(tokenName)
-                ).forEach(([tokenName, tokenValue]) => {
-                    container.style.setProperty(tokenName, tokenValue);
-                });
-            }
-        }
-    }, [cssTokens, containerId]);
+    if (container) {
+      allowedCssTokens.forEach((tokenName) => {
+        container.style.removeProperty(tokenName);
+      });
+
+      if (cssTokens && typeof cssTokens === 'object') {
+        Object.entries(cssTokens)
+          .filter(([tokenName]) => isCssTokenExist(tokenName))
+          .forEach(([tokenName, tokenValue]) => {
+            container.style.setProperty(tokenName, tokenValue);
+          });
+      }
+    }
+  }, [cssTokens, containerId]);
 }
