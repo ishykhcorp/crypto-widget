@@ -21,10 +21,15 @@ import {
   YAxis,
 } from 'recharts';
 
+import {
+  chartPointsLimit,
+  klineIntervalValueLabelMap,
+} from '../../constants/kline';
 import { useInitCssTokensForContainer } from '../../hooks/useInitCssTokensForContainer';
 import binanceApi from '../../services/binance/API';
 import { TExchangeInfoResponse } from '../../services/binance/API/types';
 import { connectToBinanceHistoricalDataSocket } from '../../services/binance/ws';
+import { EKlineIntervalNames } from '../../types/kline';
 import type { TCryptoWidgetConfig } from '../../types/widget';
 import { parseHistoricalDataResponseToChartData } from './helpers/parsers';
 import { TChartDataItem } from './types';
@@ -37,18 +42,20 @@ const FullWidget = ({ containerId, cssTokens }: TFullWidgetProps) => {
     cssTokens,
   });
 
-  const [exchangeInfo, setExchangeInfo] =
-    useState<TExchangeInfoResponse | null>(null);
+  const [symbols, setSymbols] = useState<
+    TExchangeInfoResponse['symbols'] | null
+  >(null);
   const [isLoading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string>();
   const [selectedSymbol, setSelectedSymbol] = useState<string>('');
   const [data, setData] = useState<TChartDataItem[]>([]);
+  const [selectedInterval, setSelectedInterval] = useState<string>('');
 
   useEffect(() => {
     setLoading(true);
     binanceApi
       .fetchSymbols()
-      .then((response) => setExchangeInfo(response.data))
+      .then((response) => setSymbols(response.data.symbols))
       .catch((err: Error) => {
         if (err && 'message' in Error) {
           setError(err.message);
@@ -60,14 +67,14 @@ const FullWidget = ({ containerId, cssTokens }: TFullWidgetProps) => {
   }, []);
 
   const fetchHistoricalData = useCallback(() => {
-    if (!selectedSymbol) return;
+    if (!selectedSymbol || !selectedInterval) return;
 
     setLoading(true);
     binanceApi
       .fetchHistoricalData({
         symbol: selectedSymbol,
-        limit: 100,
-        interval: '5m',
+        limit: chartPointsLimit,
+        interval: selectedInterval,
       })
       .then((response) =>
         setData(parseHistoricalDataResponseToChartData(response.data)),
@@ -80,29 +87,47 @@ const FullWidget = ({ containerId, cssTokens }: TFullWidgetProps) => {
         }
       })
       .finally(() => setLoading(false));
-  }, [selectedSymbol]);
+  }, [selectedSymbol, selectedInterval]);
 
   useEffect(() => {
-    if (!selectedSymbol) return;
+    if (!selectedSymbol || !selectedInterval) return;
 
     fetchHistoricalData();
 
     const ws = connectToBinanceHistoricalDataSocket({
       symbol: selectedSymbol.toLowerCase(),
-      onMessageHandler: (price) =>
-        setData((prevState) => [
-          ...prevState.slice(-99),
-          { time: new Date().toLocaleTimeString(), price: parseFloat(price) },
-        ]),
+      interval: selectedInterval,
+      onMessageHandler: (message) => {
+        if (message.data.e === 'kline') {
+          const { k } = message.data;
+
+          const newPoint = {
+            time: new Date(k.t).toLocaleTimeString(),
+            price: parseFloat(k.c),
+          };
+
+          setData((prevState) => {
+            const newData = [...prevState, newPoint];
+
+            return newData.length > chartPointsLimit
+              ? newData.slice(newData.length - chartPointsLimit)
+              : newData;
+          });
+        }
+      },
     });
 
     return () => {
       ws.close();
     };
-  }, [selectedSymbol, fetchHistoricalData]);
+  }, [selectedSymbol, selectedInterval, fetchHistoricalData]);
 
   const handleSelectSymbol = useCallback((e: SelectChangeEvent) => {
     setSelectedSymbol(e.target.value);
+  }, []);
+
+  const handleSelectInterval = useCallback((e: SelectChangeEvent) => {
+    setSelectedInterval(e.target.value);
   }, []);
 
   if (isLoading) {
@@ -117,23 +142,44 @@ const FullWidget = ({ containerId, cssTokens }: TFullWidgetProps) => {
         ) : (
           <>
             <Grid size={2}>
-              <Paper>
-                <FormControl fullWidth>
-                  <InputLabel id="symbol-label">Coin</InputLabel>
-                  <Select
-                    labelId="symbol-label"
-                    value={selectedSymbol}
-                    onChange={handleSelectSymbol}
-                    id="symbol"
-                  >
-                    {exchangeInfo?.symbols.map((item) => (
-                      <MenuItem key={item.symbol} value={item.symbol}>
-                        {item.symbol}
+              <FormControl fullWidth>
+                <InputLabel id="symbol-label">Coin</InputLabel>
+                <Select
+                  labelId="symbol-label"
+                  value={selectedSymbol}
+                  onChange={handleSelectSymbol}
+                  id="symbol"
+                >
+                  {symbols?.map((item) => (
+                    <MenuItem key={item.symbol} value={item.symbol}>
+                      {item.symbol}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={2}>
+              <FormControl fullWidth>
+                <InputLabel id="kline-interval-label">Interval</InputLabel>
+                <Select
+                  labelId="kline-interval-label"
+                  value={selectedInterval}
+                  onChange={handleSelectInterval}
+                  id="kline-interval"
+                >
+                  {Object.keys(klineIntervalValueLabelMap).map(
+                    (intervalValue) => (
+                      <MenuItem key={intervalValue} value={intervalValue}>
+                        {
+                          klineIntervalValueLabelMap[
+                            intervalValue as EKlineIntervalNames
+                          ]
+                        }
                       </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Paper>
+                    ),
+                  )}
+                </Select>
+              </FormControl>
             </Grid>
             {!!data.length && (
               <Grid size={12} container justifyContent="center" padding={2}>

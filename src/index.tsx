@@ -9,7 +9,7 @@ import '@fontsource/roboto/700.css';
 import WidgetConfig from './components/WidgetConfig';
 import { ICryptoWidget } from './types/widget';
 
-const cryptoWidget: ICryptoWidget = {
+export const cryptoWidget: ICryptoWidget = {
   init(config) {
     if (!config.containerId) {
       console.error('Missing containerId');
@@ -36,4 +36,4 @@ const cryptoWidget: ICryptoWidget = {
   },
 };
 
-window.CryptoWidget = cryptoWidget;
+export default cryptoWidget;

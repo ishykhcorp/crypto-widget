@@ -11,9 +11,6 @@ export type TSymbol = {
 };
 
 export type TExchangeInfoResponse = {
-  exchangeFilters: unknown[];
-  rateLimits: TRateLimit[];
-  serverTime: number;
   symbols: TSymbol[];
 };
 
