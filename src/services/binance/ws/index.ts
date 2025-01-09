@@ -17,7 +17,6 @@ export const connectToBinanceHistoricalDataSocket = ({
     const parsedData = JSON.parse(event.data) as Parameters<
       typeof onMessageHandler
     >[0];
-    console.log('parsedData', parsedData);
     onMessageHandler(parsedData);
   };
 

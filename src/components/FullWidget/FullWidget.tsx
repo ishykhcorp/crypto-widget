@@ -1,12 +1,6 @@
-import React, { memo, useCallback, useState, useEffect } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 
-import {
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  SelectChangeEvent,
-} from '@mui/material';
+import { FormControl, InputLabel, MenuItem, Select } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
@@ -25,10 +19,18 @@ import {
   chartPointsLimit,
   klineIntervalValueLabelMap,
 } from '../../constants/kline';
+import { TUseFetchData, useFetchData } from '../../hooks/useFetchData';
 import { useInitCssTokensForContainer } from '../../hooks/useInitCssTokensForContainer';
+import { useSelectState } from '../../hooks/useSelectState';
+import { useWatchHistoricalData } from '../../hooks/useWatchHistoricalData';
 import binanceApi from '../../services/binance/API';
-import { TExchangeInfoResponse } from '../../services/binance/API/types';
-import { connectToBinanceHistoricalDataSocket } from '../../services/binance/ws';
+import {
+  TExchangeInfoResponse,
+  THistoricalDataReqParams,
+  THistoricalDataResponseItem,
+  TSymbol,
+} from '../../services/binance/API/types';
+import { THistoricalDataSocketParams } from '../../services/binance/ws/types';
 import { EKlineIntervalNames } from '../../types/kline';
 import type { TCryptoWidgetConfig } from '../../types/widget';
 import { parseHistoricalDataResponseToChartData } from './helpers/parsers';
@@ -42,103 +44,99 @@ const FullWidget = ({ containerId, cssTokens }: TFullWidgetProps) => {
     cssTokens,
   });
 
-  const [symbols, setSymbols] = useState<
-    TExchangeInfoResponse['symbols'] | null
-  >(null);
-  const [isLoading, setLoading] = useState(false);
-  const [error, setError] = useState<string>();
-  const [selectedSymbol, setSelectedSymbol] = useState<string>('');
-  const [data, setData] = useState<TChartDataItem[]>([]);
-  const [selectedInterval, setSelectedInterval] = useState<string>('');
+  const symbolState = useSelectState();
+  const intervalState = useSelectState();
 
-  useEffect(() => {
-    setLoading(true);
-    binanceApi
-      .fetchSymbols()
-      .then((response) => setSymbols(response.data.symbols))
-      .catch((err: Error) => {
-        if (err && 'message' in Error) {
-          setError(err.message);
-        } else {
-          setError('Failed to fetch symbols.');
-        }
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const symbolsFetchConfig = useMemo(
+    (): TUseFetchData<TSymbol[], TExchangeInfoResponse, undefined> => ({
+      defaultErrorMsg: 'Failed to fetch symbols.',
+      parseResponseData: (data) => data.symbols,
+      reqPayload: undefined,
+      fetchFn: binanceApi.fetchSymbols,
+      enable: true,
+    }),
+    [],
+  );
 
-  const fetchHistoricalData = useCallback(() => {
-    if (!selectedSymbol || !selectedInterval) return;
+  const symbols = useFetchData(symbolsFetchConfig);
 
-    setLoading(true);
-    binanceApi
-      .fetchHistoricalData({
-        symbol: selectedSymbol,
+  const historicalFetchConfig = useMemo(
+    (): TUseFetchData<
+      TChartDataItem[],
+      THistoricalDataResponseItem[],
+      THistoricalDataReqParams
+    > => ({
+      defaultErrorMsg: 'Failed to fetch historical data.',
+      reqPayload: {
         limit: chartPointsLimit,
-        interval: selectedInterval,
-      })
-      .then((response) =>
-        setData(parseHistoricalDataResponseToChartData(response.data)),
-      )
-      .catch((err: Error) => {
-        if (err && 'message' in Error) {
-          setError(err.message);
-        } else {
-          setError('Failed to fetch historical data.');
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [selectedSymbol, selectedInterval]);
-
-  useEffect(() => {
-    if (!selectedSymbol || !selectedInterval) return;
-
-    fetchHistoricalData();
-
-    const ws = connectToBinanceHistoricalDataSocket({
-      symbol: selectedSymbol.toLowerCase(),
-      interval: selectedInterval,
-      onMessageHandler: (message) => {
-        if (message.data.e === 'kline') {
-          const { k } = message.data;
-
-          const newPoint = {
-            time: new Date(k.t).toLocaleTimeString(),
-            price: parseFloat(k.c),
-          };
-
-          setData((prevState) => {
-            const newData = [...prevState, newPoint];
-
-            return newData.length > chartPointsLimit
-              ? newData.slice(newData.length - chartPointsLimit)
-              : newData;
-          });
-        }
+        symbol: symbolState.value,
+        interval: intervalState.value,
       },
-    });
+      parseResponseData: (data) => parseHistoricalDataResponseToChartData(data),
+      fetchFn: binanceApi.fetchHistoricalData,
+      enable: Boolean(symbolState.value && intervalState.value),
+    }),
+    [symbolState.value, intervalState.value],
+  );
 
-    return () => {
-      ws.close();
-    };
-  }, [selectedSymbol, selectedInterval, fetchHistoricalData]);
+  const historicalData = useFetchData(historicalFetchConfig);
 
-  const handleSelectSymbol = useCallback((e: SelectChangeEvent) => {
-    setSelectedSymbol(e.target.value);
-  }, []);
+  const { setData: setHistoricalData } = historicalData;
 
-  const handleSelectInterval = useCallback((e: SelectChangeEvent) => {
-    setSelectedInterval(e.target.value);
-  }, []);
+  const newHistoricalDataHandler = useCallback<
+    THistoricalDataSocketParams['onMessageHandler']
+  >(
+    (message) => {
+      if (message.data.e === 'kline') {
+        const { k } = message.data;
 
-  if (isLoading) {
-    return <Skeleton animation="wave" />;
+        const newPoint = {
+          time: new Date(k.t).toLocaleTimeString(),
+          price: parseFloat(k.c),
+        };
+
+        setHistoricalData((prevState) => {
+          const newData = [...(prevState || []), newPoint];
+          console.log('newData', newData);
+
+          return newData.length > chartPointsLimit
+            ? newData.slice(newData.length - chartPointsLimit)
+            : newData;
+        });
+      }
+    },
+    [setHistoricalData],
+  );
+
+  const watchHistoricalDataPayload = useMemo(
+    (): THistoricalDataSocketParams => ({
+      symbol: symbolState.value.toLowerCase(),
+      onMessageHandler: newHistoricalDataHandler,
+      interval: intervalState.value,
+    }),
+    [symbolState.value, newHistoricalDataHandler, intervalState.value],
+  );
+
+  useWatchHistoricalData(true, watchHistoricalDataPayload);
+
+  const errors = useMemo(
+    () => [historicalData.error, symbols.error].filter(Boolean),
+    [historicalData.error, symbols.error],
+  );
+
+  if (symbols.isLoading || historicalData.isLoading) {
+    return <Skeleton height={100} animation="wave" />;
   }
 
   return (
     <Paper sx={{ flexGrow: 1 }}>
       <Grid container spacing={2} padding={2}>
-        {error ? (
-          <Grid size={12}>{error}</Grid>
+        {errors.length ? (
+          errors.map((error, index) => (
+            <Grid key={index} size={12}>
+              {error}
+            </Grid>
+          ))
         ) : (
           <>
             <Grid size={2}>
@@ -146,11 +144,11 @@ const FullWidget = ({ containerId, cssTokens }: TFullWidgetProps) => {
                 <InputLabel id="symbol-label">Coin</InputLabel>
                 <Select
                   labelId="symbol-label"
-                  value={selectedSymbol}
-                  onChange={handleSelectSymbol}
+                  value={symbolState.value}
+                  onChange={symbolState.updateValue}
                   id="symbol"
                 >
-                  {symbols?.map((item) => (
+                  {symbols.data?.map((item) => (
                     <MenuItem key={item.symbol} value={item.symbol}>
                       {item.symbol}
                     </MenuItem>
@@ -163,8 +161,8 @@ const FullWidget = ({ containerId, cssTokens }: TFullWidgetProps) => {
                 <InputLabel id="kline-interval-label">Interval</InputLabel>
                 <Select
                   labelId="kline-interval-label"
-                  value={selectedInterval}
-                  onChange={handleSelectInterval}
+                  value={intervalState.value}
+                  onChange={intervalState.updateValue}
                   id="kline-interval"
                 >
                   {Object.keys(klineIntervalValueLabelMap).map(
@@ -181,11 +179,11 @@ const FullWidget = ({ containerId, cssTokens }: TFullWidgetProps) => {
                 </Select>
               </FormControl>
             </Grid>
-            {!!data.length && (
+            {!!historicalData.data?.length && (
               <Grid size={12} container justifyContent="center" padding={2}>
                 <ResponsiveContainer width="90%" height={250}>
                   <LineChart
-                    data={data}
+                    data={historicalData.data}
                     margin={{
                       top: 40,
                       left: 40,
@@ -211,16 +209,6 @@ const FullWidget = ({ containerId, cssTokens }: TFullWidgetProps) => {
         )}
       </Grid>
     </Paper>
-
-    // <div className={style.container}>
-    //   <p className={style.text}>Full widget for container: {containerId}</p>
-    //   <p className={style.text}>
-    //     Lorem ipsum, dolor sit amet consectetur adipisicing elit. Consequuntur,
-    //     rerum iusto voluptates placeat qui temporibus magnam perferendis
-    //     commodi! Voluptatem error expedita neque cupiditate non in? In eos est
-    //     dolorum aspernatur.
-    //   </p>
-    // </div>
   );
 };
 
