@@ -14,10 +14,7 @@ cryptoWidget.init({
   containerId: 'root1',
   // @ts-expect-error test for dev
   type: 'compact',
-  cssTokens: {
-    '--bg-color': '#92dedc',
-    '--text-color': '#de7e7c',
-  },
+  mode: 'dark',
   shouldCreateContainerIfNotExist: true,
 });
 
@@ -26,10 +23,7 @@ cryptoWidget.init({
   // @ts-expect-error test for dev
   type: 'full',
   shouldCreateContainerIfNotExist: true,
-  cssTokens: {
-    '--bg-color': '#81daca',
-    '--text-color': '#005451',
-  },
+  mode: 'light',
 });
 
 cryptoWidget.init({
@@ -37,10 +31,7 @@ cryptoWidget.init({
   // @ts-expect-error test for dev
   type: 'full',
   shouldCreateContainerIfNotExist: true,
-  cssTokens: {
-    '--bg-color': '#ebbe4d',
-    '--text-color': '#453306',
-  },
+  mode: 'dark',
 });
 
 cryptoWidget.init({
@@ -48,8 +39,5 @@ cryptoWidget.init({
   // @ts-expect-error test for dev
   type: 'full',
   shouldCreateContainerIfNotExist: true,
-  cssTokens: {
-    '--bg-color': '#dea193',
-    '--text-color': '#401f18',
-  },
+  mode: 'dark',
 });

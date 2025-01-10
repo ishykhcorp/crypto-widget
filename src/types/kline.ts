@@ -15,3 +15,9 @@ export enum EKlineIntervalNames {
   '1WEEK' = '1w',
   '1MONTH' = '1M',
 }
+
+export type TKlineIntervalNamesYearIndependent = Exclude<
+  EKlineIntervalNames,
+  // @ts-expect-error suppress proof that exist value
+  EKlineIntervalNames['1MONTH']
+>;

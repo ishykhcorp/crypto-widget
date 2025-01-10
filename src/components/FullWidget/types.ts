@@ -1,4 +1,4 @@
 export type TChartDataItem = {
-  time: string;
+  time: number;
   price: number;
 };

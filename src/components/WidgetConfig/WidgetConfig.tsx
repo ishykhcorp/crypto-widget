@@ -1,4 +1,11 @@
-import React, { lazy, memo, Suspense } from 'react';
+import React, { lazy, memo, Suspense, useMemo, useEffect } from 'react';
+
+import {
+  CircularProgress,
+  createTheme,
+  ThemeProvider,
+  useColorScheme,
+} from '@mui/material';
 
 import { ECryptoWidgetType } from '../../types/widget';
 import type { TCryptoWidgetConfig } from '../../types/widget';
@@ -7,37 +14,47 @@ import ErrorBoundary from '../ErrorBoundary';
 const CompactWidget = lazy(() => import('../CompactWidget'));
 const FullWidget = lazy(() => import('../FullWidget'));
 
-const WidgetConfig = (props: TCryptoWidgetConfig) => {
+const WidgetConfig = ({
+  mode,
+  type,
+}: Pick<TCryptoWidgetConfig, 'mode' | 'type'>) => {
   let widget = null;
+  const { setMode } = useColorScheme();
 
-  switch (props.type) {
+  useEffect(() => {
+    setMode(mode || 'light');
+  }, [setMode, mode]);
+
+  switch (type) {
     case ECryptoWidgetType.COMPACT: {
-      widget = (
-        <CompactWidget
-          containerId={props.containerId}
-          cssTokens={props.cssTokens}
-        />
-      );
+      widget = <CompactWidget />;
       break;
     }
     case ECryptoWidgetType.FULL: {
-      widget = (
-        <FullWidget
-          containerId={props.containerId}
-          cssTokens={props.cssTokens}
-        />
-      );
+      widget = <FullWidget />;
       break;
     }
     default: {
-      throw new Error(`Unknown type of widget: ${props.type}`);
+      throw new Error(`Unknown type of widget: ${type}`);
     }
   }
 
+  const theme = useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode,
+        },
+      }),
+    [mode],
+  );
+
   return (
-    <ErrorBoundary>
-      <Suspense fallback="Loading...">{widget}</Suspense>
-    </ErrorBoundary>
+    <ThemeProvider theme={theme}>
+      <ErrorBoundary>
+        <Suspense fallback={<CircularProgress />}>{widget}</Suspense>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 };
 

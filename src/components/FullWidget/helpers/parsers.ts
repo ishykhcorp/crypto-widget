@@ -5,6 +5,6 @@ export const parseHistoricalDataResponseToChartData = (
   responseData: THistoricalDataResponseItem[],
 ): TChartDataItem[] =>
   responseData.map(([time, _open, _high, _low, close]) => ({
-    time: new Date(time).toLocaleTimeString(),
+    time,
     price: parseFloat(close),
   }));

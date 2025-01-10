@@ -1,6 +1,16 @@
 import React, { memo, useCallback, useMemo } from 'react';
 
-import { FormControl, InputLabel, MenuItem, Select } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  useTheme,
+} from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
@@ -20,7 +30,6 @@ import {
   klineIntervalValueLabelMap,
 } from '../../constants/kline';
 import { TUseFetchData, useFetchData } from '../../hooks/useFetchData';
-import { useInitCssTokensForContainer } from '../../hooks/useInitCssTokensForContainer';
 import { useSelectState } from '../../hooks/useSelectState';
 import { useWatchHistoricalData } from '../../hooks/useWatchHistoricalData';
 import binanceApi from '../../services/binance/API';
@@ -32,18 +41,12 @@ import {
 } from '../../services/binance/API/types';
 import { THistoricalDataSocketParams } from '../../services/binance/ws/types';
 import { EKlineIntervalNames } from '../../types/kline';
-import type { TCryptoWidgetConfig } from '../../types/widget';
+import { formatTicks, generateTicks } from '../../utils/ticks';
+import CustomTooltip from '../CustomTooltip';
 import { parseHistoricalDataResponseToChartData } from './helpers/parsers';
 import { TChartDataItem } from './types';
 
-type TFullWidgetProps = Pick<TCryptoWidgetConfig, 'cssTokens' | 'containerId'>;
-
-const FullWidget = ({ containerId, cssTokens }: TFullWidgetProps) => {
-  useInitCssTokensForContainer({
-    containerId,
-    cssTokens,
-  });
-
+const FullWidget = () => {
   const symbolState = useSelectState();
   const intervalState = useSelectState();
 
@@ -91,13 +94,12 @@ const FullWidget = ({ containerId, cssTokens }: TFullWidgetProps) => {
         const { k } = message.data;
 
         const newPoint = {
-          time: new Date(k.t).toLocaleTimeString(),
           price: parseFloat(k.c),
+          time: k.t,
         };
 
         setHistoricalData((prevState) => {
           const newData = [...(prevState || []), newPoint];
-          console.log('newData', newData);
 
           return newData.length > chartPointsLimit
             ? newData.slice(newData.length - chartPointsLimit)
@@ -124,90 +126,155 @@ const FullWidget = ({ containerId, cssTokens }: TFullWidgetProps) => {
     [historicalData.error, symbols.error],
   );
 
+  const timeTicks = useMemo(
+    () => generateTicks(historicalData.data || [], intervalState.value),
+    [historicalData.data, intervalState.value],
+  );
+
+  const tickFormatter = useCallback(
+    (value: number): string => formatTicks(value, intervalState.value),
+    [intervalState.value],
+  );
+
+  const theme = useTheme();
+
+  const axisColor = theme.palette.text.primary;
+
   if (symbols.isLoading || historicalData.isLoading) {
     return <Skeleton height={100} animation="wave" />;
   }
 
   return (
     <Paper sx={{ flexGrow: 1 }}>
-      <Grid container spacing={2} padding={2}>
-        {errors.length ? (
-          errors.map((error, index) => (
+      {errors.length ? (
+        <Grid container spacing={2} padding={2}>
+          {errors.map((error, index) => (
             <Grid key={index} size={12}>
               {error}
             </Grid>
-          ))
-        ) : (
-          <>
-            <Grid size={2}>
-              <FormControl fullWidth>
-                <InputLabel id="symbol-label">Coin</InputLabel>
-                <Select
-                  labelId="symbol-label"
-                  value={symbolState.value}
-                  onChange={symbolState.updateValue}
-                  id="symbol"
-                >
-                  {symbols.data?.map((item) => (
-                    <MenuItem key={item.symbol} value={item.symbol}>
-                      {item.symbol}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={2}>
-              <FormControl fullWidth>
-                <InputLabel id="kline-interval-label">Interval</InputLabel>
-                <Select
-                  labelId="kline-interval-label"
-                  value={intervalState.value}
-                  onChange={intervalState.updateValue}
-                  id="kline-interval"
-                >
-                  {Object.keys(klineIntervalValueLabelMap).map(
-                    (intervalValue) => (
-                      <MenuItem key={intervalValue} value={intervalValue}>
-                        {
-                          klineIntervalValueLabelMap[
-                            intervalValue as EKlineIntervalNames
-                          ]
-                        }
-                      </MenuItem>
-                    ),
-                  )}
-                </Select>
-              </FormControl>
-            </Grid>
-            {!!historicalData.data?.length && (
-              <Grid size={12} container justifyContent="center" padding={2}>
-                <ResponsiveContainer width="90%" height={250}>
-                  <LineChart
-                    data={historicalData.data}
-                    margin={{
-                      top: 40,
-                      left: 40,
-                      right: 40,
-                      bottom: 40,
-                    }}
-                  >
-                    <XAxis dataKey="time" />
-                    <YAxis domain={['dataMin', 'dataMax']} />
-                    <Tooltip />
-                    <CartesianGrid stroke="#ccc" />
-                    <Line
-                      type="monotone"
-                      dataKey="price"
-                      stroke="#8884d8"
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+          ))}
+        </Grid>
+      ) : (
+        <>
+          <Accordion>
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon />}
+              aria-controls="panel2-content"
+              id="panel2-header"
+            >
+              <Grid container width="100%" spacing={2} padding={2}>
+                <Grid size={2}>
+                  <FormControl fullWidth>
+                    <InputLabel id="symbol-label">Coin</InputLabel>
+                    <Select
+                      labelId="symbol-label"
+                      value={symbolState.value}
+                      onChange={symbolState.updateValue}
+                      id="symbol"
+                    >
+                      {symbols.data?.map((item) => (
+                        <MenuItem key={item.symbol} value={item.symbol}>
+                          {item.symbol}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid size={2}>
+                  <FormControl fullWidth>
+                    <InputLabel id="kline-interval-label">Interval</InputLabel>
+                    <Select
+                      labelId="kline-interval-label"
+                      value={intervalState.value}
+                      onChange={intervalState.updateValue}
+                      id="kline-interval"
+                    >
+                      {Object.keys(klineIntervalValueLabelMap).map(
+                        (intervalValue) => (
+                          <MenuItem key={intervalValue} value={intervalValue}>
+                            {
+                              klineIntervalValueLabelMap[
+                                intervalValue as EKlineIntervalNames
+                              ]
+                            }
+                          </MenuItem>
+                        ),
+                      )}
+                    </Select>
+                  </FormControl>
+                </Grid>
               </Grid>
-            )}
-          </>
-        )}
-      </Grid>
+            </AccordionSummary>
+            <AccordionDetails>
+              {!!historicalData.data?.length && (
+                <Grid
+                  size={12}
+                  width="100%"
+                  container
+                  justifyContent="center"
+                  padding={2}
+                >
+                  <ResponsiveContainer width="90%" height={250}>
+                    <LineChart
+                      data={historicalData.data}
+                      margin={{
+                        top: 40,
+                        left: 40,
+                        right: 40,
+                        bottom: 40,
+                      }}
+                    >
+                      <defs>
+                        <linearGradient
+                          id="binance-skin"
+                          x1="0%"
+                          y1="100%"
+                          x2="0%"
+                          y2="0%"
+                        >
+                          <stop offset="0%" stopColor="#f69c3d" />
+                          <stop offset="25%" stopColor="#497493" />
+                          <stop offset="50%" stopColor="#1b95ca" />
+                          <stop offset="75%" stopColor="#2ea07b" />
+                          <stop offset="100%" stopColor="#f5922f" />
+                        </linearGradient>
+                      </defs>
+                      <XAxis
+                        dataKey="time"
+                        domain={['dataMin', 'dataMax']}
+                        tickFormatter={tickFormatter}
+                        ticks={timeTicks}
+                        interval={'preserveStartEnd'}
+                        type="number"
+                        stroke={axisColor}
+                      />
+                      <YAxis
+                        domain={['dataMin', 'dataMax']}
+                        stroke={axisColor}
+                      />
+                      <Tooltip
+                        content={(tooltipProps) => (
+                          <CustomTooltip
+                            {...tooltipProps}
+                            interval={intervalState.value}
+                          />
+                        )}
+                      />
+                      <CartesianGrid stroke="#ccc" />
+                      <Line
+                        type="monotone"
+                        dataKey="price"
+                        stroke="url(#binance-skin)"
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Grid>
+              )}
+            </AccordionDetails>
+          </Accordion>
+        </>
+      )}
     </Paper>
   );
 };
