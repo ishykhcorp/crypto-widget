@@ -5,10 +5,6 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
   useTheme,
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
@@ -25,10 +21,7 @@ import {
   YAxis,
 } from 'recharts';
 
-import {
-  chartPointsLimit,
-  klineIntervalValueLabelMap,
-} from '../../constants/kline';
+import { chartPointsLimit } from '../../constants/kline';
 import { TUseFetchData, useFetchData } from '../../hooks/useFetchData';
 import { useSelectState } from '../../hooks/useSelectState';
 import { useWatchHistoricalData } from '../../hooks/useWatchHistoricalData';
@@ -40,11 +33,21 @@ import {
   TSymbol,
 } from '../../services/binance/API/types';
 import { THistoricalDataSocketParams } from '../../services/binance/ws/types';
-import { EKlineIntervalNames } from '../../types/kline';
 import { formatTicks, generateTicks } from '../../utils/ticks';
 import CustomTooltip from '../CustomTooltip';
+import LineSkins from '../LineSkins';
+import FullFilters from './components/FullFilters';
+import { TFullFiltersProps } from './components/FullFilters/FullFilters';
 import { parseHistoricalDataResponseToChartData } from './helpers/parsers';
 import { TChartDataItem } from './types';
+
+const colorStopsForLine = [
+  '#f69c3d',
+  '#497493',
+  '#1b95ca',
+  '#2ea07b',
+  '#f5922f',
+];
 
 const FullWidget = () => {
   const symbolState = useSelectState();
@@ -140,6 +143,23 @@ const FullWidget = () => {
 
   const axisColor = theme.palette.text.primary;
 
+  const symbolFilter = useMemo(
+    (): TFullFiltersProps['symbolConfig'] => ({
+      value: symbolState.value,
+      update: symbolState.updateValue,
+      options: symbols.data || [],
+    }),
+    [symbols.data, symbolState.value, symbolState.updateValue],
+  );
+
+  const intervalFilter = useMemo(
+    (): TFullFiltersProps['intervalConfig'] => ({
+      value: intervalState.value,
+      update: intervalState.updateValue,
+    }),
+    [intervalState.value, intervalState.updateValue],
+  );
+
   if (symbols.isLoading || historicalData.isLoading) {
     return <Skeleton height={100} animation="wave" />;
   }
@@ -162,48 +182,10 @@ const FullWidget = () => {
               aria-controls="panel2-content"
               id="panel2-header"
             >
-              <Grid container width="100%" spacing={2} padding={2}>
-                <Grid size={2}>
-                  <FormControl fullWidth>
-                    <InputLabel id="symbol-label">Coin</InputLabel>
-                    <Select
-                      labelId="symbol-label"
-                      value={symbolState.value}
-                      onChange={symbolState.updateValue}
-                      id="symbol"
-                    >
-                      {symbols.data?.map((item) => (
-                        <MenuItem key={item.symbol} value={item.symbol}>
-                          {item.symbol}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid size={2}>
-                  <FormControl fullWidth>
-                    <InputLabel id="kline-interval-label">Interval</InputLabel>
-                    <Select
-                      labelId="kline-interval-label"
-                      value={intervalState.value}
-                      onChange={intervalState.updateValue}
-                      id="kline-interval"
-                    >
-                      {Object.keys(klineIntervalValueLabelMap).map(
-                        (intervalValue) => (
-                          <MenuItem key={intervalValue} value={intervalValue}>
-                            {
-                              klineIntervalValueLabelMap[
-                                intervalValue as EKlineIntervalNames
-                              ]
-                            }
-                          </MenuItem>
-                        ),
-                      )}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
+              <FullFilters
+                intervalConfig={intervalFilter}
+                symbolConfig={symbolFilter}
+              />
             </AccordionSummary>
             <AccordionDetails>
               {!!historicalData.data?.length && (
@@ -214,6 +196,10 @@ const FullWidget = () => {
                   justifyContent="center"
                   padding={2}
                 >
+                  <LineSkins
+                    name="binance-skin"
+                    colorStops={colorStopsForLine}
+                  />
                   <ResponsiveContainer width="90%" height={250}>
                     <LineChart
                       data={historicalData.data}
@@ -224,21 +210,6 @@ const FullWidget = () => {
                         bottom: 40,
                       }}
                     >
-                      <defs>
-                        <linearGradient
-                          id="binance-skin"
-                          x1="0%"
-                          y1="100%"
-                          x2="0%"
-                          y2="0%"
-                        >
-                          <stop offset="0%" stopColor="#f69c3d" />
-                          <stop offset="25%" stopColor="#497493" />
-                          <stop offset="50%" stopColor="#1b95ca" />
-                          <stop offset="75%" stopColor="#2ea07b" />
-                          <stop offset="100%" stopColor="#f5922f" />
-                        </linearGradient>
-                      </defs>
                       <XAxis
                         dataKey="time"
                         domain={['dataMin', 'dataMax']}

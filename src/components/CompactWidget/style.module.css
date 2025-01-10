@@ -1,9 +1,0 @@
-.container {
-    background-color: var(--bg-color, white);  
-    border-radius: 10px;
-    max-width: 50%;
-}
-
-.text {
-    color: var(--text-color, black);
-}

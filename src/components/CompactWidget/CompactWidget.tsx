@@ -1,12 +1,250 @@
-import React, { memo } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 
-import * as style from './style.module.css';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Paper,
+  Typography,
+  useTheme,
+} from '@mui/material';
+import Grid from '@mui/material/Grid2';
+import Skeleton from '@mui/material/Skeleton';
+
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+
+import { chartPointsLimit } from '../../constants/kline';
+import { TUseFetchData, useFetchData } from '../../hooks/useFetchData';
+import { useSelectState } from '../../hooks/useSelectState';
+import { useWatchHistoricalData } from '../../hooks/useWatchHistoricalData';
+import binanceApi from '../../services/binance/API';
+import {
+  TExchangeInfoResponse,
+  THistoricalDataReqParams,
+  THistoricalDataResponseItem,
+  TSymbol,
+} from '../../services/binance/API/types';
+import { THistoricalDataSocketParams } from '../../services/binance/ws/types';
+import { formatTicks, generateTicks } from '../../utils/ticks';
+import CustomTooltip from '../CustomTooltip/CustomTooltip';
+import { TFullFiltersProps } from '../FullWidget/components/FullFilters/FullFilters';
+import { parseHistoricalDataResponseToChartData } from '../FullWidget/helpers/parsers';
+import { TChartDataItem } from '../FullWidget/types';
+import LineSkins from '../LineSkins/LineSkins';
+import CompactFilters from './CompactFilters';
+
+const colorStopsForLine = [
+  '#00a651',
+  '#60489d',
+  '#3d85c6',
+  '#faffbd',
+  '#843177',
+];
 
 const CompactWidget = () => {
+  const symbolState = useSelectState();
+  const intervalState = useSelectState();
+
+  const symbolsFetchConfig = useMemo(
+    (): TUseFetchData<TSymbol[], TExchangeInfoResponse, undefined> => ({
+      defaultErrorMsg: 'Failed to fetch symbols.',
+      parseResponseData: (data) => data.symbols,
+      reqPayload: undefined,
+      fetchFn: binanceApi.fetchSymbols,
+      enable: true,
+    }),
+    [],
+  );
+
+  const symbols = useFetchData(symbolsFetchConfig);
+
+  const historicalFetchConfig = useMemo(
+    (): TUseFetchData<
+      TChartDataItem[],
+      THistoricalDataResponseItem[],
+      THistoricalDataReqParams
+    > => ({
+      defaultErrorMsg: 'Failed to fetch historical data.',
+      reqPayload: {
+        limit: chartPointsLimit,
+        symbol: symbolState.value,
+        interval: intervalState.value,
+      },
+      parseResponseData: (data) => parseHistoricalDataResponseToChartData(data),
+      fetchFn: binanceApi.fetchHistoricalData,
+      enable: Boolean(symbolState.value && intervalState.value),
+    }),
+    [symbolState.value, intervalState.value],
+  );
+
+  const historicalData = useFetchData(historicalFetchConfig);
+
+  const { setData: setHistoricalData } = historicalData;
+
+  const newHistoricalDataHandler = useCallback<
+    THistoricalDataSocketParams['onMessageHandler']
+  >(
+    (message) => {
+      if (message.data.e === 'kline') {
+        const { k } = message.data;
+
+        const newPoint = {
+          price: parseFloat(k.c),
+          time: k.t,
+        };
+
+        setHistoricalData((prevState) => {
+          const newData = [...(prevState || []), newPoint];
+
+          return newData.length > chartPointsLimit
+            ? newData.slice(newData.length - chartPointsLimit)
+            : newData;
+        });
+      }
+    },
+    [setHistoricalData],
+  );
+
+  const watchHistoricalDataPayload = useMemo(
+    (): THistoricalDataSocketParams => ({
+      symbol: symbolState.value.toLowerCase(),
+      onMessageHandler: newHistoricalDataHandler,
+      interval: intervalState.value,
+    }),
+    [symbolState.value, newHistoricalDataHandler, intervalState.value],
+  );
+
+  useWatchHistoricalData(true, watchHistoricalDataPayload);
+
+  const errors = useMemo(
+    () => [historicalData.error, symbols.error].filter(Boolean),
+    [historicalData.error, symbols.error],
+  );
+
+  const timeTicks = useMemo(
+    () => generateTicks(historicalData.data || [], intervalState.value),
+    [historicalData.data, intervalState.value],
+  );
+
+  const tickFormatter = useCallback(
+    (value: number): string => formatTicks(value, intervalState.value),
+    [intervalState.value],
+  );
+
+  const theme = useTheme();
+
+  const axisColor = theme.palette.text.primary;
+
+  const symbolFilter = useMemo(
+    (): TFullFiltersProps['symbolConfig'] => ({
+      value: symbolState.value,
+      update: symbolState.updateValue,
+      options: symbols.data || [],
+    }),
+    [symbols.data, symbolState.value, symbolState.updateValue],
+  );
+
+  const intervalFilter = useMemo(
+    (): TFullFiltersProps['intervalConfig'] => ({
+      value: intervalState.value,
+      update: intervalState.updateValue,
+    }),
+    [intervalState.value, intervalState.updateValue],
+  );
+
+  if (symbols.isLoading || historicalData.isLoading) {
+    return <Skeleton height={100} animation="wave" />;
+  }
+
   return (
-    <div className={style.container}>
-      <p className={style.text}>Compact widget for container</p>
-    </div>
+    <Paper sx={{ flexGrow: 1 }}>
+      <Grid container spacing={2} padding={2}>
+        <Grid size={12}>
+          <Typography>Compact widget with limited interval options</Typography>
+        </Grid>
+      </Grid>
+      {errors.length ? (
+        <Grid container spacing={2} padding={2}>
+          {errors.map((error, index) => (
+            <Grid key={index} size={12}>
+              {error}
+            </Grid>
+          ))}
+        </Grid>
+      ) : (
+        <Accordion>
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
+            aria-controls="panel2-content"
+            id="panel2-header"
+          >
+            <CompactFilters
+              intervalConfig={intervalFilter}
+              symbolConfig={symbolFilter}
+            />
+          </AccordionSummary>
+          <AccordionDetails>
+            {!!historicalData.data?.length && (
+              <Grid
+                size={12}
+                width="100%"
+                container
+                justifyContent="center"
+                padding={2}
+              >
+                <LineSkins name="bybit-skin" colorStops={colorStopsForLine} />
+                <ResponsiveContainer width="90%" height={250}>
+                  <LineChart
+                    data={historicalData.data}
+                    margin={{
+                      top: 40,
+                      left: 40,
+                      right: 40,
+                      bottom: 40,
+                    }}
+                  >
+                    <XAxis
+                      dataKey="time"
+                      domain={['dataMin', 'dataMax']}
+                      tickFormatter={tickFormatter}
+                      ticks={timeTicks}
+                      interval={'preserveStartEnd'}
+                      type="number"
+                      stroke={axisColor}
+                    />
+                    <YAxis domain={['dataMin', 'dataMax']} stroke={axisColor} />
+                    <Tooltip
+                      content={(tooltipProps) => (
+                        <CustomTooltip
+                          {...tooltipProps}
+                          interval={intervalState.value}
+                        />
+                      )}
+                    />
+                    <CartesianGrid stroke="#ccc" />
+                    <Line
+                      type="monotone"
+                      dataKey="price"
+                      stroke="url(#bybit-skin)"
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Grid>
+            )}
+          </AccordionDetails>
+        </Accordion>
+      )}
+    </Paper>
   );
 };
 
