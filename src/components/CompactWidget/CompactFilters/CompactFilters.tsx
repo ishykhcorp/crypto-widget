@@ -43,7 +43,7 @@ const CompactFilters = ({
   intervalConfig,
 }: TFullFiltersProps) => (
   <Grid container width="100%" spacing={2} padding={2}>
-    <Grid size={2}>
+    <Grid size={6}>
       <FormControl fullWidth>
         <InputLabel id="symbol-label">Coin</InputLabel>
         <Select
@@ -60,7 +60,7 @@ const CompactFilters = ({
         </Select>
       </FormControl>
     </Grid>
-    <Grid size={2}>
+    <Grid size={6}>
       <FormControl fullWidth>
         <InputLabel id="kline-interval-label">Interval</InputLabel>
         <Select

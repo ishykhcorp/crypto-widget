@@ -21,25 +21,15 @@ import {
   YAxis,
 } from 'recharts';
 
-import { chartPointsLimit } from '../../constants/kline';
-import { TUseFetchData, useFetchData } from '../../hooks/useFetchData';
-import { useSelectState } from '../../hooks/useSelectState';
-import { useWatchHistoricalData } from '../../hooks/useWatchHistoricalData';
-import binanceApi from '../../services/binance/API';
-import {
-  TExchangeInfoResponse,
-  THistoricalDataReqParams,
-  THistoricalDataResponseItem,
-  TSymbol,
-} from '../../services/binance/API/types';
-import { THistoricalDataSocketParams } from '../../services/binance/ws/types';
+import { useSelectState } from '../../common/hooks/useSelectState';
+import { useHistoricalData } from '../../hooks/useHistoricalData';
+import { useSymbolsFilter } from '../../hooks/useSymbolsFilter';
+import { EKlineIntervalNames } from '../../types/kline';
 import { formatTicks, generateTicks } from '../../utils/ticks';
 import CustomTooltip from '../CustomTooltip';
 import LineSkins from '../LineSkins';
 import FullFilters from './components/FullFilters';
 import { TFullFiltersProps } from './components/FullFilters/FullFilters';
-import { parseHistoricalDataResponseToChartData } from './helpers/parsers';
-import { TChartDataItem } from './types';
 
 const colorStopsForLine = [
   '#f69c3d',
@@ -50,79 +40,14 @@ const colorStopsForLine = [
 ];
 
 const FullWidget = () => {
-  const symbolState = useSelectState();
   const intervalState = useSelectState();
+  const symbols = useSymbolsFilter();
+  const { filter: symbolFilter } = symbols;
 
-  const symbolsFetchConfig = useMemo(
-    (): TUseFetchData<TSymbol[], TExchangeInfoResponse, undefined> => ({
-      defaultErrorMsg: 'Failed to fetch symbols.',
-      parseResponseData: (data) => data.symbols,
-      reqPayload: undefined,
-      fetchFn: binanceApi.fetchSymbols,
-      enable: true,
-    }),
-    [],
-  );
-
-  const symbols = useFetchData(symbolsFetchConfig);
-
-  const historicalFetchConfig = useMemo(
-    (): TUseFetchData<
-      TChartDataItem[],
-      THistoricalDataResponseItem[],
-      THistoricalDataReqParams
-    > => ({
-      defaultErrorMsg: 'Failed to fetch historical data.',
-      reqPayload: {
-        limit: chartPointsLimit,
-        symbol: symbolState.value,
-        interval: intervalState.value,
-      },
-      parseResponseData: (data) => parseHistoricalDataResponseToChartData(data),
-      fetchFn: binanceApi.fetchHistoricalData,
-      enable: Boolean(symbolState.value && intervalState.value),
-    }),
-    [symbolState.value, intervalState.value],
-  );
-
-  const historicalData = useFetchData(historicalFetchConfig);
-
-  const { setData: setHistoricalData } = historicalData;
-
-  const newHistoricalDataHandler = useCallback<
-    THistoricalDataSocketParams['onMessageHandler']
-  >(
-    (message) => {
-      if (message.data.e === 'kline') {
-        const { k } = message.data;
-
-        const newPoint = {
-          price: parseFloat(k.c),
-          time: k.t,
-        };
-
-        setHistoricalData((prevState) => {
-          const newData = [...(prevState || []), newPoint];
-
-          return newData.length > chartPointsLimit
-            ? newData.slice(newData.length - chartPointsLimit)
-            : newData;
-        });
-      }
-    },
-    [setHistoricalData],
-  );
-
-  const watchHistoricalDataPayload = useMemo(
-    (): THistoricalDataSocketParams => ({
-      symbol: symbolState.value.toLowerCase(),
-      onMessageHandler: newHistoricalDataHandler,
-      interval: intervalState.value,
-    }),
-    [symbolState.value, newHistoricalDataHandler, intervalState.value],
-  );
-
-  useWatchHistoricalData(true, watchHistoricalDataPayload);
+  const historicalData = useHistoricalData({
+    symbol: symbolFilter.value,
+    interval: intervalState.value,
+  });
 
   const errors = useMemo(
     () => [historicalData.error, symbols.error].filter(Boolean),
@@ -135,22 +60,14 @@ const FullWidget = () => {
   );
 
   const tickFormatter = useCallback(
-    (value: number): string => formatTicks(value, intervalState.value),
+    (value: number): string =>
+      formatTicks(value, intervalState.value as EKlineIntervalNames),
     [intervalState.value],
   );
 
   const theme = useTheme();
 
   const axisColor = theme.palette.text.primary;
-
-  const symbolFilter = useMemo(
-    (): TFullFiltersProps['symbolConfig'] => ({
-      value: symbolState.value,
-      update: symbolState.updateValue,
-      options: symbols.data || [],
-    }),
-    [symbols.data, symbolState.value, symbolState.updateValue],
-  );
 
   const intervalFilter = useMemo(
     (): TFullFiltersProps['intervalConfig'] => ({

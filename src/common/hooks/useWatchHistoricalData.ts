@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
-import { connectToBinanceHistoricalDataSocket } from '../services/binance/ws';
-import { THistoricalDataSocketParams } from '../services/binance/ws/types';
+import { connectToBinanceHistoricalDataSocket } from '../../services/binance/ws';
+import { THistoricalDataSocketParams } from '../../services/binance/ws/types';
 
 export function useWatchHistoricalData(
   enable: boolean,

@@ -11,6 +11,7 @@ import type {
   ValueType,
 } from 'recharts/types/component/DefaultTooltipContent';
 
+import { EKlineIntervalNames } from '../../types/kline';
 import { formatTicks } from '../../utils/ticks';
 
 const CustomTooltip = (
@@ -30,7 +31,10 @@ const CustomTooltip = (
             <AccessTimeIcon />
           </ListItemIcon>
           <ListItemText
-            primary={formatTicks(props.payload[0].payload.time, props.interval)}
+            primary={formatTicks(
+              props.payload[0].payload.time,
+              props.interval as EKlineIntervalNames,
+            )}
           />
         </ListItem>
       </List>

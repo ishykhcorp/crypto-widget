@@ -15,6 +15,11 @@ import {
 import type { TChartDataItem } from '../components/FullWidget/types';
 import { klineIntervalInMillisecondsYearIndependent } from '../constants/kline';
 import {
+  daysIntervals,
+  hoursIntervals,
+  minuteIntervals,
+} from '../constants/ticks';
+import {
   EKlineIntervalNames,
   TKlineIntervalNamesYearIndependent,
 } from '../types/kline';
@@ -57,50 +62,32 @@ export function generateTicks(
   return ticks;
 }
 
-export function formatTicks(value: number, interval: string) {
-  switch (interval) {
-    case EKlineIntervalNames['1MIN']:
-    case EKlineIntervalNames['3MIN']:
-    case EKlineIntervalNames['5MIN']:
-    case EKlineIntervalNames['15MIN']:
-    case EKlineIntervalNames['30MIN']: {
-      if (isSameHour(value, Date.now())) {
-        return format(value, 'mm:ss');
-      }
+export function formatTicks(value: number, interval: EKlineIntervalNames) {
+  const now = Date.now();
 
-      return format(value, 'HH:mm:ss');
-    }
-    case EKlineIntervalNames['1HOUR']:
-    case EKlineIntervalNames['2HOURS']:
-    case EKlineIntervalNames['4HOURS']:
-    case EKlineIntervalNames['6HOURS']:
-    case EKlineIntervalNames['8HOURS']:
-    case EKlineIntervalNames['12HOURS']: {
-      if (isSameDay(value, Date.now())) {
-        return format(value, 'HH:mm');
-      }
-
-      return format(value, 'EEEEEE HH:mm');
-    }
-    case EKlineIntervalNames['1DAY']:
-    case EKlineIntervalNames['3DAYS']:
-    case EKlineIntervalNames['1WEEK']: {
-      if (isSameWeek(value, Date.now())) {
-        return format(value, 'EEEEEE');
-      }
-
-      if (isSameMonth(value, Date.now())) {
-        return format(value, 'do EEEEEE');
-      }
-
-      return format(value, 'MMM do EEEEEE');
-    }
-    default: {
-      if (isSameYear(value, Date.now())) {
-        return format(value, 'MMM');
-      }
-
-      return format(value, 'yyyy MMM');
-    }
+  if (minuteIntervals.has(interval)) {
+    return isSameHour(value, now)
+      ? format(value, 'mm:ss')
+      : format(value, 'HH:mm:ss');
   }
+
+  if (hoursIntervals.has(interval)) {
+    return isSameDay(value, now)
+      ? format(value, 'HH:mm')
+      : format(value, 'EEEEEE HH:mm');
+  }
+
+  if (daysIntervals.has(interval)) {
+    if (isSameWeek(value, now)) {
+      return format(value, 'EEEEEE');
+    }
+
+    return isSameMonth(value, now)
+      ? format(value, 'do EEEEEE')
+      : format(value, 'MMM do EEEEEE');
+  }
+
+  return isSameYear(value, now)
+    ? format(value, 'MMM')
+    : format(value, 'yyyy MMM');
 }
