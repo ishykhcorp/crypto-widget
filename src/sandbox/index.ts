@@ -4,6 +4,7 @@ cryptoWidget.init({
   containerId: 'root',
   // @ts-expect-error test for dev
   type: 'compact',
+  mode: 'dark',
   cssTokens: {
     '--bg-color': '#d3d3d3',
     '--text-color': '#363636',
@@ -14,7 +15,7 @@ cryptoWidget.init({
   containerId: 'root1',
   // @ts-expect-error test for dev
   type: 'compact',
-  mode: 'dark',
+  mode: 'light',
   shouldCreateContainerIfNotExist: true,
 });
 

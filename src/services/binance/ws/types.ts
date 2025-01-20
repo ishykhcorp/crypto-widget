@@ -5,6 +5,7 @@ export type THistoricalDataSocketParams = {
     data: {
       e: string;
       k: {
+        o: string;
         t: number;
         c: string;
       };

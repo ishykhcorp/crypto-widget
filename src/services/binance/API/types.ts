@@ -1,13 +1,7 @@
-export type TRateLimit = {
-  rateLimitType: string;
-  interval: string;
-  intervalNum: number;
-  limit: number;
-};
-
 export type TSymbol = {
   symbol: string;
-  [key: string]: unknown;
+  quoteAsset: string;
+  baseAsset: string;
 };
 
 export type TExchangeInfoResponse = {

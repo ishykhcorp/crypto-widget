@@ -1,37 +1,67 @@
-import React, { lazy, memo, Suspense, useMemo, useEffect } from 'react';
+import React, {
+  lazy,
+  memo,
+  Suspense,
+  useMemo,
+  useEffect,
+  useState,
+} from 'react';
 
 import {
   CircularProgress,
   createTheme,
   ThemeProvider,
-  useColorScheme,
+  CssBaseline,
+  useMediaQuery,
 } from '@mui/material';
 
-import { ECryptoWidgetType } from '../../types/widget';
+import { ColorModeContext } from '../../contexts/colorMode';
+import { WidgetContext } from '../../contexts/widget';
+import {
+  ECryptoWidgetType,
+  TColorMode,
+  TColorModeContext,
+} from '../../types/widget';
 import type { TCryptoWidgetConfig } from '../../types/widget';
 import ErrorBoundary from '../ErrorBoundary';
 
-const CompactWidget = lazy(() => import('../CompactWidget'));
-const FullWidget = lazy(() => import('../FullWidget'));
+const SmallWidget = lazy(() => import('../SmallWidget'));
+const LargeWidget = lazy(() => import('../LargeWidget'));
 
 const WidgetConfig = ({
   mode,
   type,
-}: Pick<TCryptoWidgetConfig, 'mode' | 'type'>) => {
+  containerId,
+}: Pick<TCryptoWidgetConfig, 'mode' | 'type' | 'containerId'>) => {
   let widget = null;
-  const { setMode } = useColorScheme();
+  const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
+  const [colorMode, setColorMode] = useState<TColorMode>(mode);
+
+  const colorModeContextValue = useMemo(
+    (): TColorModeContext => ({
+      colorMode,
+      setColorMode,
+    }),
+    [colorMode],
+  );
 
   useEffect(() => {
-    setMode(mode || 'light');
-  }, [setMode, mode]);
+    setColorMode((prevMode) => {
+      if (!prevMode) {
+        return prefersDarkMode ? 'dark' : 'light';
+      }
+
+      return prevMode;
+    });
+  }, [prefersDarkMode]);
 
   switch (type) {
     case ECryptoWidgetType.COMPACT: {
-      widget = <CompactWidget />;
+      widget = <SmallWidget />;
       break;
     }
     case ECryptoWidgetType.FULL: {
-      widget = <FullWidget />;
+      widget = <LargeWidget />;
       break;
     }
     default: {
@@ -43,18 +73,29 @@ const WidgetConfig = ({
     () =>
       createTheme({
         palette: {
-          mode,
+          mode: colorMode,
         },
       }),
-    [mode],
+    [colorMode],
   );
 
   return (
-    <ThemeProvider theme={theme}>
-      <ErrorBoundary>
-        <Suspense fallback={<CircularProgress />}>{widget}</Suspense>
-      </ErrorBoundary>
-    </ThemeProvider>
+    <ColorModeContext value={colorModeContextValue}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <ErrorBoundary>
+          <Suspense fallback={<CircularProgress />}>
+            <WidgetContext
+              value={{
+                containerId,
+              }}
+            >
+              {widget}
+            </WidgetContext>
+          </Suspense>
+        </ErrorBoundary>
+      </ThemeProvider>
+    </ColorModeContext>
   );
 };
 

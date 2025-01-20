@@ -16,8 +16,13 @@ export enum EKlineIntervalNames {
   '1MONTH' = '1M',
 }
 
-export type TKlineIntervalNamesYearIndependent = Exclude<
-  EKlineIntervalNames,
-  // @ts-expect-error suppress proof that exist value
-  EKlineIntervalNames['1MONTH']
->;
+export type TPriceInfo = {
+  currency: string;
+  openPrice: number;
+  currentPrice: number;
+};
+
+export type TChartItem = {
+  time: number;
+  price: number;
+};

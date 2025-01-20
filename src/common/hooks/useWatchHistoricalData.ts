@@ -8,7 +8,7 @@ export function useWatchHistoricalData(
   payload: THistoricalDataSocketParams,
 ) {
   useEffect(() => {
-    if (!enable || !Object.values(payload).every(Boolean)) {
+    if (!enable) {
       return;
     }
 
