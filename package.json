@@ -1,10 +1,23 @@
 {
   "name": "crypto-widget",
   "version": "1.0.0",
-  "main": "index.js",
   "scripts": {
-    "start": "webpack serve --open",
-    "build": "webpack --node-env=production"
+    "start": "webpack serve --config webpack.dev.config.ts",
+    "build": "webpack --node-env=production --config webpack.prod.config.ts",
+    "lint": "eslint .",
+    "prettier": "prettier --write .",
+    "prepare": "husky install"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{css,md,json,ts,tsx}": [
+      "prettier --write",
+      "eslint"
+    ]
   },
   "repository": {
     "type": "git",
@@ -19,24 +32,43 @@
   "homepage": "https://github.com/ishykhcorp/crypto-widget#readme",
   "description": "",
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@fontsource/roboto": "^5.1.1",
+    "@mui/icons-material": "^6.3.1",
+    "@mui/material": "^6.3.1",
+    "axios": "^1.7.9",
+    "date-fns": "^4.1.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "recharts": "^2.15.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
     "@babel/preset-env": "^7.26.0",
     "@babel/preset-react": "^7.26.3",
     "@babel/preset-typescript": "^7.26.0",
+    "@eslint/js": "^9.17.0",
+    "@trivago/prettier-plugin-sort-imports": "^5.2.1",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
     "babel-loader": "^9.2.1",
     "css-loader": "^7.1.2",
     "css-minimizer-webpack-plugin": "^7.0.0",
+    "eslint": "^9.17.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
     "html-webpack-plugin": "^5.6.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.3.0",
     "mini-css-extract-plugin": "^2.9.2",
+    "prettier": "^3.4.2",
     "style-loader": "^4.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2",
+    "typescript-eslint": "^8.19.0",
     "typescript-plugin-css-modules": "^5.1.0",
     "webpack": "^5.97.1",
     "webpack-cli": "^5.1.4",

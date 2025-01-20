@@ -1,9 +1,9 @@
-import { ICryptoWidget } from "./widget";
+import { ICryptoWidget } from './widget';
 
 declare global {
-    interface Window {
-        CryptoWidget: ICryptoWidget;
-    }
+  interface Window {
+    cryptoWidget: ICryptoWidget;
+  }
 }
 
-declare module "*.module.css";
+declare module '*.module.css';
